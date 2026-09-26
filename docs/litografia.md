@@ -45,8 +45,10 @@ de línea. Dos correcciones:
   y sin serifs).
 - **Por modelo**: usa σ y D₀ de la sección de simulación. Simula la exposición
   (máscara ⊗ gaussiana, umbral D₀/D), compara con el diseño y mueve píxeles dentro de
-  una banda alrededor de los bordes durante N iteraciones. Es experimental; revisa el
-  resultado en la vista "Máscara corregida" y en "Simulación".
+  una banda alrededor de los bordes durante N iteraciones y se queda con la iteración de
+  menor residuo. Es experimental: en figuras por debajo del límite de resolución (líneas
+  de 1 o 2 px, rejillas de paso 2 a 4 px) el residuo no baja y la corrección oscila;
+  revisa el resultado en "Máscara corregida" y en "Simulación".
 
 ## Doble patronado (A / B)
 

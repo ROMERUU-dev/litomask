@@ -383,7 +383,7 @@ export default function LithoInterface() {
                             {sourceKind === "test" && testLayers ?
                                 `${testLayers.length} capas × ${num(testTime, 3)} s` :
                                 `Dosis total ${dose.toFixed(1)} s en ${Math.max(1, num(expPulses, 1))} pulso(s) · duración ≈ ${totalTime.toFixed(0)} s`}
-                            {maskA && maskB ? " · se exportan A, B y alineación en un ZIP" : ""}
+                            {sourceKind !== "test" && maskA && maskB ? " · se exportan A, B y alineación en un ZIP" : ""}
                         </div>
                         <Button disabled={!design || !!busy} onClick={exportFiles}>Exportar .{printer.fileFormat}</Button>
                     </Accordion.Body>

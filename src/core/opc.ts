@@ -117,6 +117,10 @@ export function applyModelOpc(design: Bitmap, opts: ModelOpcOptions, onProgress?
     let mask = cloneBitmap(target);
     const history: number[] = [];
     let residual = 0;
+    // Keep the best mask seen: on features below the resolution limit the naive update can
+    // oscillate, so the last iteration is not necessarily the best one.
+    let bestMask = mask;
+    let bestResidual = Infinity;
     for (let it = 0; it < opts.iterations; it++) {
         const sim = simulateExposure(mask, opts.sigmaPx, opts.threshold);
         const under = createBitmap(width, height);
@@ -129,6 +133,7 @@ export function applyModelOpc(design: Bitmap, opts: ModelOpcOptions, onProgress?
         }
         history.push(residual);
         if (onProgress) onProgress(it, residual);
+        if (residual < bestResidual) { bestResidual = residual; bestMask = cloneBitmap(mask); }
         if (residual === 0) break;
         const grow = dilate(under, 1);
         for (let i = 0; i < mask.data.length; i++) {
@@ -137,5 +142,5 @@ export function applyModelOpc(design: Bitmap, opts: ModelOpcOptions, onProgress?
             if (over.data[i]) mask.data[i] = 0;
         }
     }
-    return { mask, residual, history };
+    return { mask: bestMask, residual: bestResidual, history };
 }
