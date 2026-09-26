@@ -1,0 +1,23 @@
+html, body, #root, .pagefill {
+  height: 100%;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
+}
+
+.box { display: flex; flex-flow: column; height: 100%; }
+.box .rows.header { flex: 0 1 auto; }
+.box .rows.content { flex: 1 1 auto; display: flex; flex-flow: column; overflow-y: auto; min-height: 0; }
+.box .rows.footer { flex: 0 1 auto; }
+.hidden { display: none !important; }
+
+.dark-bg { background: #282c34; color: #fff; }
+.dark-bg a { color: #9ecbff; }
+.dark-bg .accordion-item { background: #282c34; border-color: #444a56; }
+.dark-bg .accordion-button { background: #32373f; color: #fff; padding: 0.4rem 0.75rem; font-size: 0.95rem; }
+.dark-bg .accordion-button:not(.collapsed) { background: #3d4350; color: #fff; box-shadow: none; }
+.dark-bg .accordion-button::after { filter: invert(1); }
+.dark-bg .accordion-body { background: #2c3038; color: #eee; }
+.dark-bg .text-muted { color: #b8bcc4 !important; }
+.dark-bg .form-label { color: #ddd; }
+.dark-bg .form-check-label { color: #ddd; }
+.dark-bg .btn-outline-light { color: #eee; }
