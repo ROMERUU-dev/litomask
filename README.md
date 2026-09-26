@@ -21,6 +21,8 @@ Funciones:
 - Escritor propio de archivos Anycubic (versiones 1, 515, 516 y 517) verificado con UVtools.
 - Interfaz en **español, inglés y ruso** con selector de idioma (se recuerda en el navegador).
 
+**Usar en línea**: https://romeruu-dev.github.io/litomask/ (se despliega solo desde `main`).
+
 Documentación y protocolo de calibración: [docs/litografia.md](docs/litografia.md).
 
 ## Uso
@@ -33,7 +35,8 @@ npm run build      # versión estática en dist/
 ```
 
 La carpeta `dist/` es estática: se puede servir con cualquier servidor web (nginx, Apache,
-`python -m http.server`) sin backend.
+`python -m http.server`) sin backend. Para servirla bajo una subruta (como en GitHub Pages)
+exporta `VITE_BASE=/subruta/` antes de `npm run build`.
 
 ## Impresoras
 
