@@ -20,7 +20,7 @@ export function loadImage(file: File): Promise<HTMLImageElement> {
         const url = URL.createObjectURL(file);
         const img = new Image();
         img.onload = () => { resolve(img); };
-        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("No se pudo cargar la imagen")); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("IMAGE_LOAD")); };
         img.src = url;
     });
 }

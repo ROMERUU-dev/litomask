@@ -47,7 +47,7 @@ ctx.onmessage = async (ev: MessageEvent<Request>) => {
             }
             case "modelOpc": {
                 const r = applyModelOpc(msg.design, msg.opts, (iter, residual) => {
-                    ctx.postMessage({ id: msg.id, progress: `iteración ${iter + 1}: residuo ${residual} px` });
+                    ctx.postMessage({ id: msg.id, progress: { iter: iter + 1, residual } });
                 });
                 ctx.postMessage({ id: msg.id, ok: true, result: { mask: r.mask, history: r.history, residual: r.residual } }, transferOf(r.mask));
                 break;

@@ -10,9 +10,11 @@ import { generateTestPattern, defaultTestPatternOptions } from "../core/testpatt
 import { pulses } from "../core/export";
 import type { LithoJob } from "../core/export";
 import { runOp } from "../worker/client";
+import type { Progress } from "../worker/client";
 import PreviewCanvas from "./PreviewCanvas";
 import type { PreviewLayer } from "./PreviewCanvas";
 import CalibrationFit from "./CalibrationFit";
+import { useI18n, translateError } from "../i18n";
 
 type SourceKind = "none" | "image" | "test";
 type ViewMode = "design" | "mask" | "split" | "sim" | "aerial";
@@ -33,6 +35,7 @@ function NumberField(props: { label: string, value: string, onChange: (v: string
 }
 
 export default function LithoInterface() {
+    const { t } = useI18n();
     // ---------------- printer ----------------
     const [printerName, setPrinterName] = useState(Object.keys(printerModels)[0]);
     const printer = printerModels[printerName];
@@ -136,7 +139,7 @@ export default function LithoInterface() {
             setView("design");
             bump();
         } catch (e) {
-            setError(String((e as Error)?.message ?? e));
+            setError(translateError(e, t));
         }
     }, [sourceKind, image, widthMm, pixelMm, brightIsExposed, threshold, offsetXmm, offsetYmm, rotation, mirrorX, mirrorY, invertMask, W, H, testCells, testPitch]);
 
@@ -151,19 +154,19 @@ export default function LithoInterface() {
             setImageName(f.name.replace(/\.[^.]+$/, ""));
             setSourceKind("image");
         } catch (e) {
-            setError(String((e as Error)?.message ?? e));
+            setError(translateError(e, t));
         }
     };
 
     // ---------------- processing (in the worker) ----------------
-    const run = async <T,>(label: string, fn: (progress: (m: string) => void) => Promise<T>, done: (r: T) => void) => {
+    const run = async <T,>(label: string, fn: (progress: (p: Progress) => void) => Promise<T>, done: (r: T) => void) => {
         setBusy(label);
         setError(null);
         try {
-            const r = await fn(m => setBusy(`${label} ${m}`));
+            const r = await fn(p => setBusy(`${label} ${t.progressIter(p.iter, p.residual)}`));
             done(r);
         } catch (e) {
-            setError(String((e as Error)?.message ?? e));
+            setError(translateError(e, t));
         } finally {
             setBusy(null);
         }
@@ -171,11 +174,11 @@ export default function LithoInterface() {
 
     const applyOpc = () => {
         if (!design) return;
-        run("Aplicando corrección...", async (progress) => {
+        run(t.busyOpc, async (progress) => {
             const rule = await runOp({ op: "ruleOpc", design, opts: { convexSerif: num(convexSerif), concaveSerif: num(concaveSerif), bias: Math.round(num(biasPx)) } });
             if (!modelOpc) return { mask: rule.mask, info: "" };
             const r = await runOp({ op: "modelOpc", design: rule.mask, opts: { sigmaPx, threshold: simThreshold, iterations: Math.max(1, Math.round(num(modelIters, 4))), band: Math.max(1, Math.round(num(modelBand, 3))) } }, progress);
-            return { mask: r.mask, info: `OPC por modelo: residuo ${r.history.join(" → ")} px` };
+            return { mask: r.mask, info: t.modelOpcInfo(r.history.join(" → ")) };
         }, (r) => {
             setMask(r.mask);
             setOpcInfo(r.info);
@@ -192,9 +195,9 @@ export default function LithoInterface() {
             field,
             opts: { size: Math.round(num(markSize, 60)), lineWidth: Math.round(num(markLine, 4)), inset: Math.round(num(markInset, 80)), corners: { tl: true, tr: true, bl: true, br: true } },
         } : undefined;
-        run("Dividiendo máscara...", () => runOp({ op: "split", mask: src, minDistance: num(splitDistance, 3), marks }), (r) => {
+        run(t.busySplit, () => runOp({ op: "split", mask: src, minDistance: num(splitDistance, 3), marks }), (r) => {
             setMaskA(r.a); setMaskB(r.b); setMarksBoth(r.both);
-            setSplitInfo(`Máscara A: ${r.countA} figuras · Máscara B: ${r.countB} figuras` + (r.conflicts ? ` · ${r.conflicts} conflictos sin resolver (quedan en A)` : ""));
+            setSplitInfo(t.splitInfo(r.countA, r.countB) + (r.conflicts ? t.splitConflicts(r.conflicts) : ""));
             setView("split");
             bump();
         });
@@ -203,7 +206,7 @@ export default function LithoInterface() {
     const runSim = () => {
         const src = mask ?? design;
         if (!src) return;
-        run("Simulando exposición...", () => runOp({ op: "simulate", mask: src, sigmaPx, threshold: simThreshold }), (r) => {
+        run(t.busySim, () => runOp({ op: "simulate", mask: src, sigmaPx, threshold: simThreshold }), (r) => {
             setSim(r.sim);
             setAerial(r.aerial);
             setView("sim");
@@ -215,21 +218,21 @@ export default function LithoInterface() {
     const exportFiles = () => {
         const src = mask ?? design;
         if (!src) return;
-        const t = num(expTime, 10), n = Math.max(1, Math.round(num(expPulses, 1))), p = Math.max(0, num(expPause));
-        const base = sourceKind === "test" ? "calibracion" : imageName;
+        const tExp = num(expTime, 10), n = Math.max(1, Math.round(num(expPulses, 1))), p = Math.max(0, num(expPause));
+        const base = sourceKind === "test" ? t.fileCalib : imageName;
         const jobs: LithoJob[] = [];
         if (sourceKind === "test" && testLayers) {
-            jobs.push({ name: `${base}_matriz_dosis_${num(testTime, 3)}s_x${testLayers.length}`, layers: testLayers, exposureTime: num(testTime, 3), pause: p });
+            jobs.push({ name: `${base}_${t.fileDoseMatrix}_${num(testTime, 3)}s_x${testLayers.length}`, layers: testLayers, exposureTime: num(testTime, 3), pause: p });
         } else if (maskA && maskB) {
-            jobs.push({ name: `${base}_A`, layers: pulses(maskA, n), exposureTime: t, pause: p });
-            jobs.push({ name: `${base}_B`, layers: pulses(maskB, n), exposureTime: t, pause: p });
+            jobs.push({ name: `${base}_A`, layers: pulses(maskA, n), exposureTime: tExp, pause: p });
+            jobs.push({ name: `${base}_B`, layers: pulses(maskB, n), exposureTime: tExp, pause: p });
             if (marksBoth && countOn(marksBoth) > 0) {
-                jobs.push({ name: `${base}_alineacion`, layers: [marksBoth], exposureTime: num(alignTime, 300), pause: 0 });
+                jobs.push({ name: `${base}_${t.fileAlign}`, layers: [marksBoth], exposureTime: num(alignTime, 300), pause: 0 });
             }
         } else {
-            jobs.push({ name: base, layers: pulses(src, n), exposureTime: t, pause: p });
+            jobs.push({ name: base, layers: pulses(src, n), exposureTime: tExp, pause: p });
         }
-        run("Generando archivos...", async () => {
+        run(t.busyExport, async () => {
             const files: { fileName: string, blob: Blob }[] = [];
             for (const job of jobs) {
                 const r = await runOp({ op: "build", job, printerName, printer });
@@ -271,31 +274,31 @@ export default function LithoInterface() {
                 onInput={() => { const f = fileInput.current?.files?.[0]; if (f) onFile(f); }} />
 
             <Form.Group className={"mb-2"}>
-                <Form.Label className={"small mb-0"}>Impresora</Form.Label>
+                <Form.Label className={"small mb-0"}>{t.printer}</Form.Label>
                 <Form.Select size={"sm"} value={printerName} onChange={e => setPrinterName(e.target.value)}>
                     {Object.keys(printerModels).map(k => <option key={k} value={k}>{k}</option>)}
                 </Form.Select>
-                <div className={"small text-muted"}>{W} × {H} px · {pixelUm.toFixed(1)} µm/px · {(W * pixelMm).toFixed(1)} × {(H * pixelMm).toFixed(1)} mm</div>
+                <div className={"small text-muted"}>{t.printerInfo(W, H, pixelUm.toFixed(1), (W * pixelMm).toFixed(1), (H * pixelMm).toFixed(1))}</div>
             </Form.Group>
 
             <Accordion defaultActiveKey={["0", "4"]} alwaysOpen flush>
                 <Accordion.Item eventKey={"0"}>
-                    <Accordion.Header>1 · Máscara</Accordion.Header>
+                    <Accordion.Header>{t.sec1}</Accordion.Header>
                     <Accordion.Body className={"p-2"}>
                         <div className={"mb-2"}>
-                            <Button size={"sm"} className={"me-1"} onClick={() => fileInput.current?.click()}>Cargar PNG / SVG</Button>
-                            <Button size={"sm"} variant={sourceKind === "test" ? "warning" : "outline-light"} onClick={() => setSourceKind("test")}>Patrón de calibración</Button>
+                            <Button size={"sm"} className={"me-1"} onClick={() => fileInput.current?.click()}>{t.loadImage}</Button>
+                            <Button size={"sm"} variant={sourceKind === "test" ? "warning" : "outline-light"} onClick={() => setSourceKind("test")}>{t.testPattern}</Button>
                         </div>
                         {sourceKind === "image" && image ? <>
-                            <div className={"small mb-1"}>{imageName} · {image.naturalWidth} × {image.naturalHeight} px de imagen</div>
-                            <NumberField label={"Ancho físico (mm)"} value={widthMm} onChange={setWidthMm} />
-                            <NumberField label={"Umbral de luminancia (0-255)"} value={threshold} onChange={setThreshold} step={1} />
-                            <Form.Check type={"switch"} className={"small"} label={"Los píxeles claros son los expuestos"} checked={brightIsExposed} onChange={e => setBrightIsExposed(e.target.checked)} />
-                            <Form.Check type={"switch"} className={"small"} label={"Invertir (tono negativo)"} checked={invertMask} onChange={e => setInvertMask(e.target.checked)} />
-                            <NumberField label={"Desplazamiento X (mm)"} value={offsetXmm} onChange={setOffsetXmm} />
-                            <NumberField label={"Desplazamiento Y (mm)"} value={offsetYmm} onChange={setOffsetYmm} />
+                            <div className={"small mb-1"}>{t.imageInfo(imageName, image.naturalWidth, image.naturalHeight)}</div>
+                            <NumberField label={t.widthMm} value={widthMm} onChange={setWidthMm} />
+                            <NumberField label={t.threshold} value={threshold} onChange={setThreshold} step={1} />
+                            <Form.Check type={"switch"} className={"small"} label={t.brightIsExposed} checked={brightIsExposed} onChange={e => setBrightIsExposed(e.target.checked)} />
+                            <Form.Check type={"switch"} className={"small"} label={t.invert} checked={invertMask} onChange={e => setInvertMask(e.target.checked)} />
+                            <NumberField label={t.offsetX} value={offsetXmm} onChange={setOffsetXmm} />
+                            <NumberField label={t.offsetY} value={offsetYmm} onChange={setOffsetYmm} />
                             <Row className={"align-items-center mb-1"}>
-                                <Col sm={7} className={"small"}>Rotación</Col>
+                                <Col sm={7} className={"small"}>{t.rotation}</Col>
                                 <Col sm={5}>
                                     <ButtonGroup size={"sm"}>
                                         {[0, 90, 180, 270].map(r => <ToggleButton key={r} id={`rot${r}`} type={"radio"} variant={"outline-light"} size={"sm"}
@@ -303,89 +306,79 @@ export default function LithoInterface() {
                                     </ButtonGroup>
                                 </Col>
                             </Row>
-                            <Form.Check inline type={"switch"} className={"small"} label={"Espejo X"} checked={mirrorX} onChange={e => setMirrorX(e.target.checked)} />
-                            <Form.Check inline type={"switch"} className={"small"} label={"Espejo Y"} checked={mirrorY} onChange={e => setMirrorY(e.target.checked)} />
-                            <div className={"small text-muted mt-1"}>
-                                La imagen tal como se ve aquí es lo que verás sobre la resina mirándola de frente (el sustrato va boca abajo sobre la pantalla).
-                                Confírmalo con la "F" del patrón de calibración.
-                            </div>
+                            <Form.Check inline type={"switch"} className={"small"} label={t.mirrorX} checked={mirrorX} onChange={e => setMirrorX(e.target.checked)} />
+                            <Form.Check inline type={"switch"} className={"small"} label={t.mirrorY} checked={mirrorY} onChange={e => setMirrorY(e.target.checked)} />
+                            <div className={"small text-muted mt-1"}>{t.orientationHint}</div>
                         </> : null}
                         {sourceKind === "test" ? <>
-                            <NumberField label={"Celdas (pasos de dosis)"} value={testCells} onChange={setTestCells} step={1} />
-                            <NumberField label={"Paso entre celdas (px)"} value={testPitch} onChange={setTestPitch} step={10} />
-                            <NumberField label={"Tiempo por capa t (s)"} value={testTime} onChange={setTestTime} />
+                            <NumberField label={t.cells} value={testCells} onChange={setTestCells} step={1} />
+                            <NumberField label={t.cellPitch} value={testPitch} onChange={setTestPitch} step={10} />
+                            <NumberField label={t.timePerLayer} value={testTime} onChange={setTestTime} />
                             <div className={"small text-muted"}>
-                                La celda k recibe k × t = {num(testTime, 3)} … {num(testTime, 3) * num(testCells, 10)} s.
-                                Cuadro grande: {defaultTestPatternOptions.squareSize} px = {(defaultTestPatternOptions.squareSize * pixelUm).toFixed(0)} µm.
-                                Líneas de {defaultTestPatternOptions.lineWidths.join(", ")} px; rejillas de paso {defaultTestPatternOptions.gratingPitches.join(", ")} px.
+                                {t.testInfo(num(testTime, 3), num(testTime, 3) * num(testCells, 10), defaultTestPatternOptions.squareSize, (defaultTestPatternOptions.squareSize * pixelUm).toFixed(0), defaultTestPatternOptions.lineWidths.join(", "), defaultTestPatternOptions.gratingPitches.join(", "))}
                             </div>
                         </> : null}
                     </Accordion.Body>
                 </Accordion.Item>
 
                 <Accordion.Item eventKey={"1"}>
-                    <Accordion.Header>2 · Corrección de proximidad (OPC)</Accordion.Header>
+                    <Accordion.Header>{t.sec2}</Accordion.Header>
                     <Accordion.Body className={"p-2"}>
-                        <NumberField label={"Serif en esquinas convexas (px)"} value={convexSerif} onChange={setConvexSerif} step={1} />
-                        <NumberField label={"Anti-serif en esquinas cóncavas (px)"} value={concaveSerif} onChange={setConcaveSerif} step={1} />
-                        <NumberField label={"Sesgo global (px, + ensancha)"} value={biasPx} onChange={setBiasPx} step={1} />
-                        <Form.Check type={"switch"} className={"small"} label={"OPC por modelo (usa σ y D₀ de la simulación)"} checked={modelOpc} onChange={e => setModelOpc(e.target.checked)} />
+                        <NumberField label={t.convexSerif} value={convexSerif} onChange={setConvexSerif} step={1} />
+                        <NumberField label={t.concaveSerif} value={concaveSerif} onChange={setConcaveSerif} step={1} />
+                        <NumberField label={t.bias} value={biasPx} onChange={setBiasPx} step={1} />
+                        <Form.Check type={"switch"} className={"small"} label={t.modelOpc} checked={modelOpc} onChange={e => setModelOpc(e.target.checked)} />
                         {modelOpc ? <>
-                            <NumberField label={"Iteraciones"} value={modelIters} onChange={setModelIters} step={1} />
-                            <NumberField label={"Banda de corrección (px)"} value={modelBand} onChange={setModelBand} step={1} />
+                            <NumberField label={t.iterations} value={modelIters} onChange={setModelIters} step={1} />
+                            <NumberField label={t.band} value={modelBand} onChange={setModelBand} step={1} />
                         </> : null}
-                        <Button size={"sm"} className={"mt-1"} disabled={!design || !!busy} onClick={applyOpc}>Aplicar corrección</Button>
-                        {mask ? <span className={"small ms-2"}>máscara corregida lista{opcInfo ? ` · ${opcInfo}` : ""}</span> : null}
+                        <Button size={"sm"} className={"mt-1"} disabled={!design || !!busy} onClick={applyOpc}>{t.applyOpc}</Button>
+                        {mask ? <span className={"small ms-2"}>{t.maskReady}{opcInfo ? ` · ${opcInfo}` : ""}</span> : null}
                     </Accordion.Body>
                 </Accordion.Item>
 
                 <Accordion.Item eventKey={"2"}>
-                    <Accordion.Header>3 · Doble patronado (A / B)</Accordion.Header>
+                    <Accordion.Header>{t.sec3}</Accordion.Header>
                     <Accordion.Body className={"p-2"}>
-                        <div className={"small text-muted mb-1"}>
-                            Separa en dos máscaras las figuras más cercanas que la distancia indicada. Solo sirve si entre A y B
-                            revelas, grabas o endureces y vuelves a recubrir; en una sola capa de resina la dosis se suma igual.
-                        </div>
-                        <NumberField label={"Distancia mínima entre figuras (px)"} value={splitDistance} onChange={setSplitDistance} step={1} />
-                        <Form.Check type={"switch"} className={"small"} label={"Marcas de alineación (cruz en A, caja en B)"} checked={marksEnabled} onChange={e => setMarksEnabled(e.target.checked)} />
+                        <div className={"small text-muted mb-1"}>{t.splitHelp}</div>
+                        <NumberField label={t.minDistance} value={splitDistance} onChange={setSplitDistance} step={1} />
+                        <Form.Check type={"switch"} className={"small"} label={t.marks} checked={marksEnabled} onChange={e => setMarksEnabled(e.target.checked)} />
                         {marksEnabled ? <>
-                            <NumberField label={"Tamaño de la cruz (px)"} value={markSize} onChange={setMarkSize} step={2} />
-                            <NumberField label={"Grosor de línea (px)"} value={markLine} onChange={setMarkLine} step={1} />
-                            <NumberField label={"Separación del campo (px)"} value={markInset} onChange={setMarkInset} step={5} />
-                            <NumberField label={"Tiempo del archivo de alineación (s)"} value={alignTime} onChange={setAlignTime} />
+                            <NumberField label={t.markSize} value={markSize} onChange={setMarkSize} step={2} />
+                            <NumberField label={t.markLine} value={markLine} onChange={setMarkLine} step={1} />
+                            <NumberField label={t.markInset} value={markInset} onChange={setMarkInset} step={5} />
+                            <NumberField label={t.alignTime} value={alignTime} onChange={setAlignTime} />
                         </> : null}
-                        <Button size={"sm"} className={"mt-1"} disabled={!design || !!busy} onClick={applySplit}>Dividir</Button>
+                        <Button size={"sm"} className={"mt-1"} disabled={!design || !!busy} onClick={applySplit}>{t.split}</Button>
                         {maskA ? <span className={"small ms-2"}>{splitInfo}</span> : null}
                     </Accordion.Body>
                 </Accordion.Item>
 
                 <Accordion.Item eventKey={"3"}>
-                    <Accordion.Header>4 · Simulación y calibración</Accordion.Header>
+                    <Accordion.Header>{t.sec4}</Accordion.Header>
                     <Accordion.Body className={"p-2"}>
-                        <NumberField label={"Desenfoque σ (µm)"} value={sigmaUm} onChange={setSigmaUm} />
-                        <NumberField label={"Dosis mínima D₀ (s)"} value={d0s} onChange={setD0s} />
-                        <div className={"small text-muted mb-1"}>
-                            σ = {sigmaPx.toFixed(2)} px · dosis actual {dose.toFixed(1)} s · umbral D₀/D = {simThreshold.toFixed(3)}
-                        </div>
-                        <Button size={"sm"} className={"me-1"} disabled={!design || !!busy} onClick={runSim}>Simular</Button>
-                        <Button size={"sm"} variant={"outline-light"} onClick={() => setShowFit(true)}>Ajustar σ y D₀ con mediciones</Button>
+                        <NumberField label={t.sigma} value={sigmaUm} onChange={setSigmaUm} />
+                        <NumberField label={t.d0} value={d0s} onChange={setD0s} />
+                        <div className={"small text-muted mb-1"}>{t.simInfo(sigmaPx.toFixed(2), dose.toFixed(1), simThreshold.toFixed(3))}</div>
+                        <Button size={"sm"} className={"me-1"} disabled={!design || !!busy} onClick={runSim}>{t.simulate}</Button>
+                        <Button size={"sm"} variant={"outline-light"} onClick={() => setShowFit(true)}>{t.fitButton}</Button>
                     </Accordion.Body>
                 </Accordion.Item>
 
                 <Accordion.Item eventKey={"4"}>
-                    <Accordion.Header>5 · Exposición y exportar</Accordion.Header>
+                    <Accordion.Header>{t.sec5}</Accordion.Header>
                     <Accordion.Body className={"p-2"}>
-                        {sourceKind === "test" ? <div className={"small text-muted mb-1"}>La matriz de dosis usa el tiempo por capa del patrón; aquí solo aplica la pausa.</div> : null}
-                        <NumberField label={"Tiempo por pulso (s)"} value={expTime} onChange={setExpTime} disabled={sourceKind === "test"} />
-                        <NumberField label={"Número de pulsos"} value={expPulses} onChange={setExpPulses} step={1} disabled={sourceKind === "test"} />
-                        <NumberField label={"Pausa entre pulsos (s)"} value={expPause} onChange={setExpPause} />
+                        {sourceKind === "test" ? <div className={"small text-muted mb-1"}>{t.testExportNote}</div> : null}
+                        <NumberField label={t.pulseTime} value={expTime} onChange={setExpTime} disabled={sourceKind === "test"} />
+                        <NumberField label={t.pulses} value={expPulses} onChange={setExpPulses} step={1} disabled={sourceKind === "test"} />
+                        <NumberField label={t.pause} value={expPause} onChange={setExpPause} />
                         <div className={"small text-muted mb-2"}>
                             {sourceKind === "test" && testLayers ?
-                                `${testLayers.length} capas × ${num(testTime, 3)} s` :
-                                `Dosis total ${dose.toFixed(1)} s en ${Math.max(1, num(expPulses, 1))} pulso(s) · duración ≈ ${totalTime.toFixed(0)} s`}
-                            {sourceKind !== "test" && maskA && maskB ? " · se exportan A, B y alineación en un ZIP" : ""}
+                                t.testSummary(testLayers.length, num(testTime, 3)) :
+                                t.doseSummary(dose.toFixed(1), Math.max(1, num(expPulses, 1)), totalTime.toFixed(0))}
+                            {sourceKind !== "test" && maskA && maskB ? t.zipNote : ""}
                         </div>
-                        <Button disabled={!design || !!busy} onClick={exportFiles}>Exportar .{printer.fileFormat}</Button>
+                        <Button disabled={!design || !!busy} onClick={exportFiles}>{t.exportBtn(printer.fileFormat)}</Button>
                     </Accordion.Body>
                 </Accordion.Item>
             </Accordion>
@@ -397,22 +390,22 @@ export default function LithoInterface() {
         <div className={"col-8 h-100 box"}>
             <div className={"rows header p-2 border-bottom"}>
                 <ButtonGroup size={"sm"}>
-                    <ToggleButton id={"v-design"} type={"radio"} variant={"outline-secondary"} checked={view === "design"} value={"design"} onChange={() => setView("design")}>Diseño</ToggleButton>
-                    <ToggleButton id={"v-mask"} type={"radio"} variant={"outline-secondary"} checked={view === "mask"} value={"mask"} disabled={!mask} onChange={() => setView("mask")}>Máscara corregida</ToggleButton>
-                    <ToggleButton id={"v-split"} type={"radio"} variant={"outline-secondary"} checked={view === "split"} value={"split"} disabled={!maskA} onChange={() => setView("split")}>A / B</ToggleButton>
-                    <ToggleButton id={"v-sim"} type={"radio"} variant={"outline-secondary"} checked={view === "sim"} value={"sim"} disabled={!sim} onChange={() => setView("sim")}>Simulación</ToggleButton>
-                    <ToggleButton id={"v-aerial"} type={"radio"} variant={"outline-secondary"} checked={view === "aerial"} value={"aerial"} disabled={!aerial} onChange={() => setView("aerial")}>Imagen aérea</ToggleButton>
+                    <ToggleButton id={"v-design"} type={"radio"} variant={"outline-secondary"} checked={view === "design"} value={"design"} onChange={() => setView("design")}>{t.viewDesign}</ToggleButton>
+                    <ToggleButton id={"v-mask"} type={"radio"} variant={"outline-secondary"} checked={view === "mask"} value={"mask"} disabled={!mask} onChange={() => setView("mask")}>{t.viewMask}</ToggleButton>
+                    <ToggleButton id={"v-split"} type={"radio"} variant={"outline-secondary"} checked={view === "split"} value={"split"} disabled={!maskA} onChange={() => setView("split")}>{t.viewSplit}</ToggleButton>
+                    <ToggleButton id={"v-sim"} type={"radio"} variant={"outline-secondary"} checked={view === "sim"} value={"sim"} disabled={!sim} onChange={() => setView("sim")}>{t.viewSim}</ToggleButton>
+                    <ToggleButton id={"v-aerial"} type={"radio"} variant={"outline-secondary"} checked={view === "aerial"} value={"aerial"} disabled={!aerial} onChange={() => setView("aerial")}>{t.viewAerial}</ToggleButton>
                 </ButtonGroup>
                 <span className={"small text-muted ms-3"}>
-                    {view === "sim" ? "rojo = diseño sin exponer, cian = expuesto de más, blanco = coincide" : null}
-                    {view === "split" ? "naranja = máscara A, azul = máscara B" : null}
-                    {view === "mask" ? "gris = diseño, azul claro = máscara con corrección" : null}
+                    {view === "sim" ? t.legendSim : null}
+                    {view === "split" ? t.legendSplit : null}
+                    {view === "mask" ? t.legendMask : null}
                 </span>
             </div>
             <div className={"rows content"}>
                 {design ?
                     <PreviewCanvas layers={previewLayers} width={W} height={H} pixelMm={pixelMm} version={version + (view === "design" ? 0 : 1000)} />
-                    : <div className={"d-flex h-100 align-items-center justify-content-center text-muted"}>Carga una máscara o genera el patrón de calibración</div>}
+                    : <div className={"d-flex h-100 align-items-center justify-content-center text-muted"}>{t.emptyHint}</div>}
             </div>
         </div>
 

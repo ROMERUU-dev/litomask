@@ -3,7 +3,9 @@
  */
 import type { WorkerOp, WorkerResults } from "./litho.worker";
 
-type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; onProgress?: (msg: string) => void };
+export interface Progress { iter: number; residual: number }
+
+type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; onProgress?: (p: Progress) => void };
 
 let worker: Worker | null = null;
 let nextId = 1;
@@ -27,7 +29,7 @@ function getWorker(): Worker {
     return worker;
 }
 
-export function runOp<K extends WorkerOp["op"]>(request: Extract<WorkerOp, { op: K }>, onProgress?: (msg: string) => void): Promise<WorkerResults[K]> {
+export function runOp<K extends WorkerOp["op"]>(request: Extract<WorkerOp, { op: K }>, onProgress?: (p: Progress) => void): Promise<WorkerResults[K]> {
     const id = nextId++;
     return new Promise((resolve, reject) => {
         pending.set(id, { resolve: resolve as (v: unknown) => void, reject, onProgress });

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { Bitmap } from "../core/bitmap";
+import { useI18n } from "../i18n";
 
 export interface PreviewLayer {
     bitmap: Bitmap;
@@ -21,6 +22,7 @@ interface Props {
 /** Full-resolution composite drawn to an offscreen canvas, then shown with zoom/pan. */
 export default function PreviewCanvas(props: Props) {
     const { layers, width, height, pixelMm, version } = props;
+    const { t } = useI18n();
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [view, setView] = useState({ zoom: 0.2, x: 0, y: 0 });
@@ -153,16 +155,15 @@ export default function PreviewCanvas(props: Props) {
                 onDoubleClick={fit} />
         </div>
         <div className={"rows footer px-2 py-1 small text-muted d-flex align-items-center"} style={{ flex: "0 0 auto" }}>
-            <button className={"btn btn-sm btn-outline-secondary py-0 me-1"} onClick={() => zoomBy(2)} title={"Acercar"}>+</button>
-            <button className={"btn btn-sm btn-outline-secondary py-0 me-1"} onClick={() => zoomBy(0.5)} title={"Alejar"}>−</button>
-            <button className={"btn btn-sm btn-outline-secondary py-0 me-2"} onClick={fit} title={"Ajustar a la ventana"}>⤢</button>
-            zoom {view.zoom.toFixed(2)}x
+            <button className={"btn btn-sm btn-outline-secondary py-0 me-1"} onClick={() => zoomBy(2)} title={t.zoomIn}>+</button>
+            <button className={"btn btn-sm btn-outline-secondary py-0 me-1"} onClick={() => zoomBy(0.5)} title={t.zoomOut}>−</button>
+            <button className={"btn btn-sm btn-outline-secondary py-0 me-2"} onClick={fit} title={t.fitView}>⤢</button>
+            {t.zoomLabel(view.zoom.toFixed(2))}
             {cursor && cursor.px >= 0 && cursor.py >= 0 && cursor.px < width && cursor.py < height ?
                 <span className={"ms-3"}>
-                    px ({Math.floor(cursor.px)}, {Math.floor(cursor.py)}) ·
-                    mm ({((cursor.px - width / 2) * pixelMm).toFixed(2)}, {((cursor.py - height / 2) * pixelMm).toFixed(2)}) desde el centro
+                    {t.cursorInfo(Math.floor(cursor.px), Math.floor(cursor.py), ((cursor.px - width / 2) * pixelMm).toFixed(2), ((cursor.py - height / 2) * pixelMm).toFixed(2))}
                 </span> : null}
-            <span className={"ms-3"}>rueda: zoom · arrastrar: mover · doble clic: ajustar</span>
+            <span className={"ms-3"}>{t.canvasHelp}</span>
         </div>
     </div>;
 }

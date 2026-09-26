@@ -19,6 +19,7 @@ Funciones:
 - **Calibración**: patrón de prueba con matriz de dosis en un solo archivo y ajuste de σ y
   D₀ a partir de tus mediciones.
 - Escritor propio de archivos Anycubic (versiones 1, 515, 516 y 517) verificado con UVtools.
+- Interfaz en **español, inglés y ruso** con selector de idioma (se recuerda en el navegador).
 
 Documentación y protocolo de calibración: [docs/litografia.md](docs/litografia.md).
 
@@ -47,6 +48,8 @@ M3 Plus, Mono, Mono SE, Mono X, Photon / Photon S, Photon X. Las definiciones es
 - `src/formats/` — escritor de archivos Anycubic y lista de impresoras.
 - `src/worker/` — Web Worker que ejecuta las operaciones pesadas fuera del hilo de la interfaz.
 - `src/ui/` — interfaz (React + Bootstrap).
+- `src/i18n/` — diccionarios de traducción tipados (`es.ts` es la referencia; `en.ts` y `ru.ts`
+  deben implementar las mismas claves, TypeScript lo comprueba).
 
 ## Créditos
 
