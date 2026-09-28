@@ -144,6 +144,8 @@ export function renderCell(index: number, opts: TestPatternOptions): Bitmap {
 }
 
 export interface TestPatternResult {
+    /** Number of cells actually placed (may be fewer than requested on small screens). */
+    cells_used: number;
     /** Full pattern with every cell (what you see at dose k·t for cell k when using the dose layers). */
     all: Bitmap;
     /** Per-cell bitmaps positioned on the screen (index 0 = cell 1). */
@@ -158,7 +160,11 @@ export interface TestPatternResult {
 export function generateTestPattern(width: number, height: number, opts: TestPatternOptions): TestPatternResult {
     const P = opts.cellPitch;
     const cols = Math.max(1, Math.min(opts.cells, Math.floor(width / P)));
-    const rows = Math.ceil(opts.cells / cols);
+    const maxRows = Math.max(1, Math.floor(height / P));
+    // Low-resolution screens cannot hold every cell: keep only the ones that fit
+    const nCells = Math.min(opts.cells, cols * maxRows);
+    opts = { ...opts, cells: nCells };
+    const rows = Math.ceil(nCells / cols);
     const x0 = Math.floor((width - cols * P) / 2);
     const y0 = Math.floor((height - rows * P) / 2);
 
@@ -184,5 +190,5 @@ export function generateTestPattern(width: number, height: number, opts: TestPat
         }
         doseLayers.push(layer);
     }
-    return { all, cells, doseLayers, positions };
+    return { cells_used: nCells, all, cells, doseLayers, positions };
 }

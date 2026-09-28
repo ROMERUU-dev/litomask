@@ -192,6 +192,14 @@ describe("test pattern", () => {
         expect(countOn(r.doseLayers[3])).toBe(countOn(r.cells[3]));
     });
 
+    test("cells that do not fit on a small screen are dropped", () => {
+        const opts = { ...defaultTestPatternOptions, cells: 10, cellPitch: 380 };
+        const r = generateTestPattern(480, 854, opts); // Photon Zero
+        expect(r.cells_used).toBe(2);
+        expect(r.doseLayers.length).toBe(2);
+        expect(countOn(r.all)).toBeGreaterThan(0);
+    });
+
     test("text renders", () => {
         const t = renderText("12F", 2);
         expect(t.width).toBe(22);

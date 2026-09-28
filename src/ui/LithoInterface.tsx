@@ -129,6 +129,7 @@ export default function LithoInterface() {
             } else if (sourceKind === "test") {
                 const opts = { ...defaultTestPatternOptions, cells: Math.max(1, Math.round(num(testCells, 10))), cellPitch: Math.max(200, Math.round(num(testPitch, 380))) };
                 const tp = generateTestPattern(W, H, opts);
+                if (tp.cells_used < opts.cells) setTestCells(String(tp.cells_used));
                 setDesign(tp.all);
                 setField(boundingBox(tp.all));
                 setTestLayers(tp.doseLayers);
