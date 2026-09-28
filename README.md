@@ -24,6 +24,7 @@ Funciones:
 **Usar en línea**: https://romeruu-dev.github.io/litomask/ (se despliega solo desde `main`).
 
 Documentación y protocolo de calibración: [docs/litografia.md](docs/litografia.md).
+Guía impresa de calibración con microscopio (PDF): [docs/Guia_calibracion_LitoMask_Nikon_Eclipse.pdf](docs/Guia_calibracion_LitoMask_Nikon_Eclipse.pdf).
 
 ## Uso
 
