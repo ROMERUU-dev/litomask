@@ -25,10 +25,10 @@ function num(v: string, fallback = 0): number {
 }
 
 function NumberField(props: { label: string, value: string, onChange: (v: string) => void, step?: number, help?: string, disabled?: boolean }) {
-    return <Form.Group as={Row} className={"mb-1 align-items-center"}>
-        <Form.Label column sm={7} className={"small py-0"}>{props.label}</Form.Label>
-        <Col sm={5}>
-            <Form.Control size={"sm"} type={"number"} step={props.step ?? "any"} value={props.value}
+    return <Form.Group as={Row} className={"mb-1 align-items-center g-1"}>
+        <Form.Label column xs={7} className={"small py-0"}>{props.label}</Form.Label>
+        <Col xs={5}>
+            <Form.Control size={"sm"} type={"number"} inputMode={"decimal"} step={props.step ?? "any"} value={props.value}
                 disabled={props.disabled} onChange={e => props.onChange(e.target.value)} title={props.help} />
         </Col>
     </Form.Group>;
@@ -268,8 +268,8 @@ export default function LithoInterface() {
 
     const totalTime = (num(expTime) + num(expPause)) * Math.max(1, num(expPulses, 1));
 
-    return <div className={"row h-100 g-0"}>
-        <div className={"col-4 dark-bg p-2 h-100"} style={{ overflowY: "auto" }}>
+    return <div className={"litho-layout"}>
+        <div className={"litho-controls dark-bg p-2"}>
             <input type={"file"} ref={fileInput} className={"hidden"} accept={".png,.jpg,.jpeg,.bmp,.gif,.svg,.webp"}
                 onInput={() => { const f = fileInput.current?.files?.[0]; if (f) onFile(f); }} />
 
@@ -297,9 +297,9 @@ export default function LithoInterface() {
                             <Form.Check type={"switch"} className={"small"} label={t.invert} checked={invertMask} onChange={e => setInvertMask(e.target.checked)} />
                             <NumberField label={t.offsetX} value={offsetXmm} onChange={setOffsetXmm} />
                             <NumberField label={t.offsetY} value={offsetYmm} onChange={setOffsetYmm} />
-                            <Row className={"align-items-center mb-1"}>
-                                <Col sm={7} className={"small"}>{t.rotation}</Col>
-                                <Col sm={5}>
+                            <Row className={"align-items-center mb-1 g-1"}>
+                                <Col xs={7} className={"small"}>{t.rotation}</Col>
+                                <Col xs={5}>
                                     <ButtonGroup size={"sm"}>
                                         {[0, 90, 180, 270].map(r => <ToggleButton key={r} id={`rot${r}`} type={"radio"} variant={"outline-light"} size={"sm"}
                                             checked={rotation === r} value={r} onChange={() => setRotation(r as 0 | 90 | 180 | 270)}>{r}°</ToggleButton>)}
@@ -387,16 +387,16 @@ export default function LithoInterface() {
             {error ? <Alert variant={"danger"} className={"mt-2 py-1 small"}>{error}</Alert> : null}
         </div>
 
-        <div className={"col-8 h-100 box"}>
-            <div className={"rows header p-2 border-bottom"}>
-                <ButtonGroup size={"sm"}>
+        <div className={"litho-preview box"}>
+            <div className={"rows header p-1 p-md-2 border-bottom d-flex flex-wrap align-items-center"}>
+                <ButtonGroup size={"sm"} className={"flex-wrap"}>
                     <ToggleButton id={"v-design"} type={"radio"} variant={"outline-secondary"} checked={view === "design"} value={"design"} onChange={() => setView("design")}>{t.viewDesign}</ToggleButton>
                     <ToggleButton id={"v-mask"} type={"radio"} variant={"outline-secondary"} checked={view === "mask"} value={"mask"} disabled={!mask} onChange={() => setView("mask")}>{t.viewMask}</ToggleButton>
                     <ToggleButton id={"v-split"} type={"radio"} variant={"outline-secondary"} checked={view === "split"} value={"split"} disabled={!maskA} onChange={() => setView("split")}>{t.viewSplit}</ToggleButton>
                     <ToggleButton id={"v-sim"} type={"radio"} variant={"outline-secondary"} checked={view === "sim"} value={"sim"} disabled={!sim} onChange={() => setView("sim")}>{t.viewSim}</ToggleButton>
                     <ToggleButton id={"v-aerial"} type={"radio"} variant={"outline-secondary"} checked={view === "aerial"} value={"aerial"} disabled={!aerial} onChange={() => setView("aerial")}>{t.viewAerial}</ToggleButton>
                 </ButtonGroup>
-                <span className={"small text-muted ms-3"}>
+                <span className={"small text-muted ms-2 ms-md-3"}>
                     {view === "sim" ? t.legendSim : null}
                     {view === "split" ? t.legendSplit : null}
                     {view === "mask" ? t.legendMask : null}

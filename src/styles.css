@@ -21,3 +21,22 @@ html, body, #root, .pagefill {
 .dark-bg .form-label { color: #ddd; }
 .dark-bg .form-check-label { color: #ddd; }
 .dark-bg .btn-outline-light { color: #eee; }
+
+/* ---- Responsive layout: side by side on desktop, stacked on phones/tablets ---- */
+.litho-layout { display: flex; flex-direction: row; height: 100%; min-height: 0; }
+.litho-controls { flex: 0 0 34%; max-width: 480px; min-width: 300px; overflow-y: auto; height: 100%; }
+.litho-preview { flex: 1 1 auto; min-width: 0; height: 100%; }
+
+@media (max-width: 991.98px) {
+  .litho-layout { flex-direction: column; }
+  .litho-preview { flex: 0 0 auto; height: 46vh; min-height: 240px; order: 0; }
+  .litho-controls { flex: 1 1 auto; max-width: none; min-width: 0; height: auto; order: 1; }
+  .litho-controls .accordion-button { font-size: 0.9rem; padding: 0.35rem 0.6rem; }
+}
+
+/* Larger touch targets on coarse pointers (phones, tablets) */
+@media (pointer: coarse) {
+  .form-control-sm, .form-select-sm { min-height: 2.2rem; font-size: 1rem; }
+  .btn-sm { min-height: 2.2rem; }
+  .form-check-input { width: 1.4em; height: 1.4em; }
+}

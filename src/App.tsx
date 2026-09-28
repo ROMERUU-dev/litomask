@@ -6,7 +6,7 @@ function Header() {
     const { t, lang, setLang } = useI18n();
     return <div className={"rows header dark-bg px-2 py-1 d-flex align-items-center border-bottom border-secondary"}>
         <strong className={"me-2"}>{t.appTitle}</strong>
-        <span className={"small text-muted"}>{t.appSubtitle}</span>
+        <span className={"small text-muted d-none d-md-inline"}>{t.appSubtitle}</span>
         <select className={"form-select form-select-sm ms-auto"} style={{ width: "auto" }} value={lang}
             aria-label={t.language} title={t.language} onChange={e => setLang(e.target.value as Lang)}>
             {languages.map(l => <option key={l} value={l}>{dictionaries[l].langName}</option>)}

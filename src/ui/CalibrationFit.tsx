@@ -39,7 +39,7 @@ export default function CalibrationFit(props: Props) {
         return fitCalibration(points, w0);
     }, [points, nominal]);
 
-    return <Modal show={show} onHide={onHide} size={"lg"}>
+    return <Modal show={show} onHide={onHide} size={"lg"} fullscreen={"md-down"}>
         <Modal.Header closeButton><Modal.Title>{t.fitTitle}</Modal.Title></Modal.Header>
         <Modal.Body>
             <p className={"small"}>{t.fitHelp(timePerLayer)}</p>
