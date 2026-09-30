@@ -115,3 +115,49 @@ El escritor (`src/formats/anycubic.ts`) genera los contenedores Anycubic
 versión 1, 515, 516 y 517 (`.pm3n`, Mono 2) según el layout de UVtools. Los archivos
 generados se verificaron abriéndolos con UVtoolsCmd 7.0: todas las secciones se
 reconocen y las capas decodifican píxel a píxel idénticas al original.
+
+## Photon Mono 4 Ultra y control desde la computadora
+
+La Mono 4 Ultra (pantalla de 7", 9024 × 5120 px, 17 µm por píxel, área de 153.4 × 87 mm)
+está en el selector de impresoras. Su archivo `.pm4u` no es el binario de la Mono 2 sino un
+ZIP con manifiestos JSON (`anycubic_photon_resins.pwsp`, `layers_controller.conf`,
+`print_info.json`...), tres miniaturas PNG, las capas en el mismo RLE de 4 bits que la Mono 2
+y dos tablas binarias (`scene.slice`, `calc_layer_volumes.data`). LitoMask lo genera completo
+siguiendo el layout de UVtools 7 y los archivos se abren y decodifican con UVtoolsCmd.
+
+Dos avisos sobre este modelo:
+
+- **Tamaño.** 46 Mpx por capa. La vista previa se dibuja a resolución reducida, pero la
+  simulación y la OPC por modelo trabajan a resolución completa y tardan varios segundos en un
+  equipo de escritorio; en un teléfono pueden agotar la memoria.
+- **Capas idénticas.** El firmware de Anycubic es delicado con los parámetros por capa
+  (UVtools tiene varios reportes de "archivo corrupto" o de impresiones que se detienen en la
+  última capa por ese motivo). LitoMask escribe siempre todas las capas con la misma exposición
+  y `use_indivi_layerpara = 0`, que es el caso que el firmware maneja bien.
+
+### ¿Se puede controlar por cable?
+
+No con lo que trae la máquina. La Mono 4 Ultra tiene un puerto USB-A que solo funciona como
+lector de memorias, y Wi-Fi de 2.4 GHz que la conecta a la nube de Anycubic (app y Photon
+Workshop pasan por ahí). No expone puerto serie, ni USB en modo dispositivo, ni una API de red
+local: los proyectos que sí hablan en local con impresoras Anycubic (modo LAN con broker MQTT en
+el puerto 9883) cubren la familia Kobra de filamento; los Photon de resina van por otra
+plataforma sin API local documentada.
+
+Lo que sí se puede montar, de menor a mayor esfuerzo:
+
+1. **Nube de Anycubic.** Existen clientes no oficiales del API de Anycubic Cloud (por ejemplo
+   `anycubic-cloud-api` en Python) que leen el estado y pueden lanzar un archivo que la
+   impresora ya tiene. Necesita cuenta, internet y un token sacado de la app o del slicer, y
+   depende de que Anycubic no cambie el servicio.
+2. **Memoria USB emulada.** Una Raspberry Pi Zero 2 W (o Pi 4) en modo *USB gadget* de
+   almacenamiento masivo, enchufada al puerto USB de la impresora, se ve como una memoria
+   normal. La computadora copia el `.pm4u` a la Pi por red (o por su segundo USB) y la
+   impresora lo ve aparecer al instante; el disparo sigue siendo desde la pantalla táctil, o
+   desde la app si se combina con la opción 1. Es la solución "por cable" real con este modelo.
+3. **Reemplazar la electrónica.** Sacar el panel LCD y el LED y gobernarlos desde la PC
+   (placa HDMI→MIPI para el panel y un driver PWM propio para el LED). Da control total de
+   tiempo, intensidad y secuencia, pero deja de ser una impresora.
+
+Si el objetivo es solo no caminar con la memoria USB, la opción 2 es la que conviene.
+

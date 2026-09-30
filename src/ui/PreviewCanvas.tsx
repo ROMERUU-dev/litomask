@@ -36,40 +36,48 @@ export default function PreviewCanvas(props: Props) {
     const pointers = useRef(new Map<number, { x: number, y: number }>());
     const gesture = useRef<{ view: View, cx: number, cy: number, dist: number } | null>(null);
 
+    // Very large screens (e.g. 9024 x 5120 on the Mono 4 Ultra) are composited at reduced
+    // resolution to keep the preview canvas under ~16 Mpx of RGBA memory.
+    const MAX_PREVIEW_PX = 16_000_000;
+    const step = Math.max(1, Math.ceil(Math.sqrt((width * height) / MAX_PREVIEW_PX)));
     const offscreen = useMemo(() => {
+        const cw = Math.ceil(width / step), ch = Math.ceil(height / step);
         const c = document.createElement("canvas");
-        c.width = width;
-        c.height = height;
+        c.width = cw;
+        c.height = ch;
         const ctx = c.getContext("2d")!;
-        const img = ctx.createImageData(width, height);
+        const img = ctx.createImageData(cw, ch);
         const d = img.data;
-        const n = width * height;
+        const n = cw * ch;
         for (let i = 0; i < n; i++) { d[i * 4] = 16; d[i * 4 + 1] = 16; d[i * 4 + 2] = 20; d[i * 4 + 3] = 255; }
         for (const layer of layers) {
             if (!layer.bitmap || layer.bitmap.width !== width || layer.bitmap.height !== height) continue;
             const src = layer.bitmap.data;
             const [r, g, b] = layer.color;
-            if (layer.grey) {
-                for (let i = 0; i < n; i++) {
-                    const v = src[i] / 255;
-                    if (v <= 0) continue;
-                    d[i * 4] = Math.min(255, d[i * 4] + r * v);
-                    d[i * 4 + 1] = Math.min(255, d[i * 4 + 1] + g * v);
-                    d[i * 4 + 2] = Math.min(255, d[i * 4 + 2] + b * v);
-                }
-            } else {
-                for (let i = 0; i < n; i++) {
-                    if (src[i] < 128) continue;
-                    d[i * 4] = Math.min(255, d[i * 4] + r);
-                    d[i * 4 + 1] = Math.min(255, d[i * 4 + 1] + g);
-                    d[i * 4 + 2] = Math.min(255, d[i * 4 + 2] + b);
+            for (let y = 0; y < ch; y++) {
+                const sy = Math.min(height - 1, y * step);
+                for (let x = 0; x < cw; x++) {
+                    const sx = Math.min(width - 1, x * step);
+                    // with step > 1 take the max over the skipped block so thin lines stay visible
+                    let v = 0;
+                    if (step === 1) v = src[sy * width + sx];
+                    else {
+                        for (let yy = sy; yy < Math.min(height, sy + step); yy++)
+                            for (let xx = sx; xx < Math.min(width, sx + step); xx++) { const s = src[yy * width + xx]; if (s > v) v = s; }
+                    }
+                    if (layer.grey ? v <= 0 : v < 128) continue;
+                    const f = layer.grey ? v / 255 : 1;
+                    const i = y * cw + x;
+                    d[i * 4] = Math.min(255, d[i * 4] + r * f);
+                    d[i * 4 + 1] = Math.min(255, d[i * 4 + 1] + g * f);
+                    d[i * 4 + 2] = Math.min(255, d[i * 4 + 2] + b * f);
                 }
             }
         }
         ctx.putImageData(img, 0, 0);
         return c;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [version, width, height]);
+    }, [version, width, height, step]);
 
     const fit = () => {
         const el = containerRef.current;
@@ -109,7 +117,7 @@ export default function PreviewCanvas(props: Props) {
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, size.w, size.h);
         ctx.imageSmoothingEnabled = view.zoom * dpr < 1;
-        ctx.setTransform(dpr * view.zoom, 0, 0, dpr * view.zoom, dpr * view.x, dpr * view.y);
+        ctx.setTransform(dpr * view.zoom * step, 0, 0, dpr * view.zoom * step, dpr * view.x, dpr * view.y);
         ctx.drawImage(offscreen, 0, 0);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.strokeStyle = "#888";
@@ -122,7 +130,7 @@ export default function PreviewCanvas(props: Props) {
         ctx.fillRect(12, size.h - 18, barPx, 3);
         ctx.font = "12px sans-serif";
         ctx.fillText(`${barMm} mm`, 12, size.h - 24);
-    }, [view, offscreen, width, height, pixelMm, size]);
+    }, [view, offscreen, width, height, pixelMm, size, step]);
 
     const zoomAt = (factor: number, mx: number, my: number) => {
         setView(v => {

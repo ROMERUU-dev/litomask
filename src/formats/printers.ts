@@ -2,7 +2,9 @@ import type { PhotonPrinterSettings } from "./anycubic";
 
 export interface PrinterModel extends PhotonPrinterSettings {
     rotate180: boolean;
-    fileFormat: "dlp" | "pm3" | "pm3m" | "pm3n" | "pmsq" | "pw0" | "pwma" | "pwmb" | "pwmo" | "pwms" | "pwmx" | "pws" | "photon" | "pwx";
+    fileFormat: "dlp" | "pm3" | "pm3m" | "pm3n" | "pmsq" | "pw0" | "pwma" | "pwmb" | "pwmo" | "pwms" | "pwmx" | "pws" | "photon" | "pwx" | "pm4u";
+    /** File container: the classic binary "ANYCUBIC" file (default) or the ZIP-based format of the newer printers. */
+    container?: "binary" | "zip";
 }
 
 /**
@@ -19,6 +21,17 @@ export const printerModels: { [key: string]: PrinterModel } = {
         "rotate180": true,
         "encoding": "RLE4",
         "fileFormat": "pm3n"
+    },
+    'AnyCubic Photon Mono 4 Ultra (.pm4u)': {
+        "fileVersion": [518, 11],
+        "xyRes": 0.017,
+        "resolution": [9024, 5120],
+        "physicalDimensions": [153.408, 87.04, 165.0],
+        "previewResolution": [224, 168],
+        "rotate180": true,
+        "encoding": "RLE4",
+        "fileFormat": "pm4u",
+        "container": "zip"
     },
     'AnyCubic Photon Ultra (.dlp)': {
         "fileVersion": [515, 5],

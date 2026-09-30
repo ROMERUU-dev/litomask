@@ -4,6 +4,7 @@
 import type { Bitmap } from "./bitmap";
 import { buildPhotonFileMulti } from "../formats/anycubic";
 import type { PhotonLayerInput } from "../formats/anycubic";
+import { buildAnycubicZip, ZIP_PREVIEW_SIZES } from "../formats/anycubicZip";
 import { machineNameFor } from "../formats/printers";
 import type { PrinterModel } from "../formats/printers";
 
@@ -47,21 +48,45 @@ export function makeThumbnail(b: Bitmap, w: number, h: number): Uint8Array {
     return out;
 }
 
-export function buildLithoFile(job: LithoJob, printerName: string, printer: PrinterModel): LithoFile {
+/** Encodes an RGBA buffer as PNG. Provided by the caller (OffscreenCanvas in the worker); optional in tests. */
+export type PngEncoder = (rgba: Uint8Array, width: number, height: number) => Promise<Uint8Array>;
+
+export async function buildLithoFile(job: LithoJob, printerName: string, printer: PrinterModel, encodePng?: PngEncoder): Promise<LithoFile> {
     const [resX, resY] = printer.resolution;
     for (const l of job.layers) {
         if (l.width !== resX || l.height !== resY) {
-            throw new Error(`La capa mide ${l.width}x${l.height} y la impresora espera ${resX}x${resY}`);
+            throw new Error(`Layer is ${l.width}x${l.height} but the printer expects ${resX}x${resY}`);
         }
     }
     const layers: PhotonLayerInput[] = job.layers.map(l => ({ pixels: l.data }));
-    const thumb = makeThumbnail(job.layers[0], printer.previewResolution[0], printer.previewResolution[1]);
-    const blob = buildPhotonFileMulti(layers, thumb, {
-        exposureTime: job.exposureTime,
-        waitTimeBeforeCure: job.pause,
-        layerHeight: 0.05,
-        liftHeight: 0,
-    }, { ...printer, printerModel: machineNameFor(printerName) });
+    let blob: Blob;
+    if (printer.container === "zip") {
+        const previewPngs: Uint8Array[] = [];
+        if (encodePng) {
+            for (const [pw, ph] of ZIP_PREVIEW_SIZES) previewPngs.push(await encodePng(makeThumbnail(job.layers[0], pw, ph), pw, ph));
+        }
+        blob = await buildAnycubicZip(layers, {
+            exposureTime: job.exposureTime,
+            waitTimeBeforeCure: job.pause,
+            layerHeight: 0.05,
+            liftHeight: 0,
+            previewPngs,
+        }, {
+            machineName: machineNameFor(printerName),
+            keySuffix: printer.fileFormat,
+            resolution: printer.resolution,
+            xyRes: printer.xyRes,
+            physicalDimensions: printer.physicalDimensions ?? [resX * printer.xyRes, resY * printer.xyRes, 165],
+        });
+    } else {
+        const thumb = makeThumbnail(job.layers[0], printer.previewResolution[0], printer.previewResolution[1]);
+        blob = buildPhotonFileMulti(layers, thumb, {
+            exposureTime: job.exposureTime,
+            waitTimeBeforeCure: job.pause,
+            layerHeight: 0.05,
+            liftHeight: 0,
+        }, { ...printer, printerModel: machineNameFor(printerName) });
+    }
     return {
         fileName: `${job.name}.${printer.fileFormat}`,
         blob,

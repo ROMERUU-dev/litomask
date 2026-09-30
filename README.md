@@ -18,7 +18,8 @@ Funciones:
   A/B, simulación e imagen aérea.
 - **Calibración**: patrón de prueba con matriz de dosis en un solo archivo y ajuste de σ y
   D₀ a partir de tus mediciones.
-- Escritor propio de archivos Anycubic (versiones 1, 515, 516 y 517) verificado con UVtools.
+- Escritores propios de archivos Anycubic: binario (versiones 1, 515, 516 y 517) y ZIP
+  (`.pm4u`), ambos verificados con UVtools.
 - Interfaz en **español, inglés y ruso** con selector de idioma (se recuerda en el navegador).
 
 **Usar en línea**: https://romeruu-dev.github.io/litomask/ (se despliega solo desde `main`).
@@ -41,9 +42,14 @@ exporta `VITE_BASE=/subruta/` antes de `npm run build`.
 
 ## Impresoras
 
-Photon Mono 2 (`.pm3n`), Photon Ultra, M3, M3 Max, Mono SQ, Zero, Mono 4K, Mono X 6K /
-M3 Plus, Mono, Mono SE, Mono X, Photon / Photon S, Photon X. Las definiciones están en
-`src/formats/printers.ts`.
+Photon Mono 2 (`.pm3n`), **Photon Mono 4 Ultra (`.pm4u`)**, Photon Ultra, M3, M3 Max, Mono SQ,
+Zero, Mono 4K, Mono X 6K / M3 Plus, Mono, Mono SE, Mono X, Photon / Photon S, Photon X. Las
+definiciones están en `src/formats/printers.ts`.
+
+La Mono 4 Ultra usa el contenedor ZIP de los Photon nuevos (manifiestos JSON + capas RLE), escrito
+por `src/formats/anycubicZip.ts` y verificado con UVtools. Su pantalla de 9024 × 5120 px genera
+mapas de bits de 46 Mpx: la simulación y la OPC por modelo tardan más y necesitan un equipo de
+escritorio con memoria suficiente.
 
 ## Estructura
 

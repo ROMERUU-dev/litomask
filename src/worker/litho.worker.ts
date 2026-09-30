@@ -32,6 +32,19 @@ type Request = { id: number } & WorkerOp;
 
 const ctx = self as unknown as Worker;
 
+/** PNG encoding inside the worker via OffscreenCanvas (Chrome, Firefox, Safari 16.4+). */
+async function encodePng(rgba: Uint8Array, width: number, height: number): Promise<Uint8Array> {
+    if (typeof OffscreenCanvas === "undefined") return new Uint8Array(0);
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext("2d")!;
+    const copy = new Uint8ClampedArray(new ArrayBuffer(rgba.byteLength));
+    copy.set(rgba);
+    const img = new ImageData(copy, width, height);
+    ctx.putImageData(img, 0, 0);
+    const blob = await canvas.convertToBlob({ type: "image/png" });
+    return new Uint8Array(await blob.arrayBuffer());
+}
+
 function transferOf(...bitmaps: (Bitmap | null | undefined)[]): ArrayBuffer[] {
     return bitmaps.filter((b): b is Bitmap => !!b).map(b => b.data.buffer as ArrayBuffer);
 }
@@ -69,7 +82,7 @@ ctx.onmessage = async (ev: MessageEvent<Request>) => {
                 break;
             }
             case "build": {
-                const f = buildLithoFile(msg.job, msg.printerName, msg.printer);
+                const f = await buildLithoFile(msg.job, msg.printerName, msg.printer, encodePng);
                 const bytes = await f.blob.arrayBuffer();
                 ctx.postMessage({ id: msg.id, ok: true, result: { fileName: f.fileName, bytes, layerCount: f.layerCount, totalTimeS: f.totalTimeS } }, [bytes]);
                 break;
