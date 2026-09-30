@@ -1,0 +1,21 @@
+[Unit]
+Description=LitoMask - puente USB para impresoras Anycubic (memoria USB emulada + HTTP)
+Documentation=https://github.com/ROMERUU-dev/litomask/tree/main/pi
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+# Opciones extra (por ejemplo --mount-options loop) en /etc/default/litomask-usb
+EnvironmentFile=-/etc/default/litomask-usb
+ExecStart=/usr/bin/python3 /opt/litomask/litomask-usb.py --port 8080 --image /var/lib/litomask/usb.img --mount /var/lib/litomask/mnt --www /opt/litomask/www --label LITOMASK $LITOMASK_OPTS
+# Al parar: espera a que termine una escritura en curso y deja la memoria expuesta.
+KillSignal=SIGTERM
+KillMode=mixed
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

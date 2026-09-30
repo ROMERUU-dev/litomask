@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -32,6 +32,18 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+      # Second build with base "/" for self-hosting (Raspberry Pi USB bridge, own server),
+      # published as the "latest" GitHub release asset.
+      - run: npm run build
+        env:
+          VITE_BASE: /
+      - run: cd dist && zip -qr ../litomask-dist.zip .
+      - name: Publicar litomask-dist.zip en la release "latest"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view latest >/dev/null 2>&1 || gh release create latest --title "LitoMask (última compilación)" --notes "Compilación estática de main para servir desde cualquier servidor (base /)." --latest
+          gh release upload latest litomask-dist.zip --clobber
 
   deploy:
     needs: build

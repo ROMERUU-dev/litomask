@@ -40,6 +40,22 @@ La carpeta `dist/` es estática: se puede servir con cualquier servidor web (ngi
 `python -m http.server`) sin backend. Para servirla bajo una subruta (como en GitHub Pages)
 exporta `VITE_BASE=/subruta/` antes de `npm run build`.
 
+## Enviar a la impresora (puente USB)
+
+La sección **6 · Enviar a la impresora** manda los archivos generados a un *puente USB*: una
+Raspberry Pi enchufada al puerto USB de la impresora que se comporta como una memoria USB y
+expone una pequeña API HTTP en el puerto 8080. La app sube cada archivo, la Pi "desenchufa y
+vuelve a enchufar" la memoria virtual y la impresión se lanza desde la pantalla de la impresora
+como siempre.
+
+- Montaje, instalación del servicio y contrato HTTP: [pi/README.md](pi/README.md).
+- Abre LitoMask desde la propia Pi (`http://litomask.local:8080`, que también sirve la app)
+  para que la petición sea del mismo origen: la versión de GitHub Pages va por HTTPS y el
+  navegador bloquea las llamadas a un puente `http://` de la red local (contenido mixto).
+- La dirección del puente se recuerda en el navegador (`localStorage`, clave `litomask.bridgeUrl`).
+  Un nombre o IP a secas (`litomask.local`, `192.168.1.20`) usa el puerto 8080; una URL completa
+  (`http://…`) se respeta tal cual, por si el servicio está detrás de otro puerto o un proxy.
+
 ## Impresoras
 
 Photon Mono 2 (`.pm3n`), **Photon Mono 4 Ultra (`.pm4u`)**, Photon Ultra, M3, M3 Max, Mono SQ,

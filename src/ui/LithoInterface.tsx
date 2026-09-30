@@ -14,6 +14,8 @@ import type { Progress } from "../worker/client";
 import PreviewCanvas from "./PreviewCanvas";
 import type { PreviewLayer } from "./PreviewCanvas";
 import CalibrationFit from "./CalibrationFit";
+import PrinterLink from "./PrinterLink";
+import type { OutputFile } from "../core/printerLink";
 import { useI18n, translateError } from "../i18n";
 
 type SourceKind = "none" | "image" | "test";
@@ -216,11 +218,14 @@ export default function LithoInterface() {
     };
 
     // ---------------- export ----------------
-    const exportFiles = () => {
+    const outputBase = sourceKind === "test" ? t.fileCalib : imageName;
+
+    /** Trabajos de exposición según el estado actual: matriz de dosis, A/B (+ alineación) o máscara única. */
+    const buildJobs = (): LithoJob[] => {
         const src = mask ?? design;
-        if (!src) return;
+        if (!src) return [];
         const tExp = num(expTime, 10), n = Math.max(1, Math.round(num(expPulses, 1))), p = Math.max(0, num(expPause));
-        const base = sourceKind === "test" ? t.fileCalib : imageName;
+        const base = outputBase;
         const jobs: LithoJob[] = [];
         if (sourceKind === "test" && testLayers) {
             jobs.push({ name: `${base}_${t.fileDoseMatrix}_${num(testTime, 3)}s_x${testLayers.length}`, layers: testLayers, exposureTime: num(testTime, 3), pause: p });
@@ -233,16 +238,27 @@ export default function LithoInterface() {
         } else {
             jobs.push({ name: base, layers: pulses(src, n), exposureTime: tExp, pause: p });
         }
+        return jobs;
+    };
+
+    /** Construye en el worker los archivos de impresora; lo usan la descarga y el envío al puente USB. */
+    const buildOutputFiles = async (): Promise<OutputFile[]> => {
+        const files: OutputFile[] = [];
+        for (const job of buildJobs()) {
+            const r = await runOp({ op: "build", job, printerName, printer });
+            files.push({ fileName: r.fileName, bytes: r.bytes });
+        }
+        return files;
+    };
+
+    const exportFiles = () => {
+        if (!design) return;
         run(t.busyExport, async () => {
-            const files: { fileName: string, blob: Blob }[] = [];
-            for (const job of jobs) {
-                const r = await runOp({ op: "build", job, printerName, printer });
-                files.push({ fileName: r.fileName, blob: new Blob([r.bytes]) });
-            }
-            if (files.length === 1) return { name: files[0].fileName, blob: files[0].blob };
+            const files = await buildOutputFiles();
+            if (files.length === 1) return { name: files[0].fileName, blob: new Blob([files[0].bytes]) };
             const zip = new JSZip();
-            for (const f of files) zip.file(f.fileName, f.blob);
-            return { name: `${base}_litomask.zip`, blob: await zip.generateAsync({ type: "blob" }) };
+            for (const f of files) zip.file(f.fileName, f.bytes);
+            return { name: `${outputBase}_litomask.zip`, blob: await zip.generateAsync({ type: "blob" }) };
         }, (r) => saveAs(r.blob, r.name));
     };
 
@@ -380,6 +396,13 @@ export default function LithoInterface() {
                             {sourceKind !== "test" && maskA && maskB ? t.zipNote : ""}
                         </div>
                         <Button disabled={!design || !!busy} onClick={exportFiles}>{t.exportBtn(printer.fileFormat)}</Button>
+                    </Accordion.Body>
+                </Accordion.Item>
+
+                <Accordion.Item eventKey={"5"}>
+                    <Accordion.Header>{t.sec6}</Accordion.Header>
+                    <Accordion.Body className={"p-2"}>
+                        <PrinterLink hasDesign={!!design} busy={busy} setBusy={setBusy} setError={setError} buildFiles={buildOutputFiles} />
                     </Accordion.Body>
                 </Accordion.Item>
             </Accordion>

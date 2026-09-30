@@ -161,3 +161,14 @@ Lo que sí se puede montar, de menor a mayor esfuerzo:
 
 Si el objetivo es solo no caminar con la memoria USB, la opción 2 es la que conviene.
 
+
+La opción 2 ya está resuelta en este repositorio: la carpeta [`pi/`](../pi/README.md) contiene
+el "puente USB" para Raspberry Pi (Zero 2 W, Zero W, Pi 4/5 por USB-C). Un único script de
+Python sin dependencias expone una imagen FAT32 como memoria USB con `g_mass_storage` y recibe
+los archivos por HTTP (`PUT /api/files/nombre.pm4u`); en cada envío retira la memoria, escribe el
+archivo, la desmonta y la vuelve a exponer para que la impresora la relea. La Pi sirve además
+una copia de LitoMask en `http://litomask.local:8080`, que es desde donde conviene usar la
+sección "Enviar a la impresora" (desde GitHub Pages, por HTTPS, el navegador bloquea la
+llamada a un `http://` de la red local). El instalador `pi/install.sh` configura `dwc2`, crea la
+imagen y deja el servicio en `systemd`; el disparo de la impresión sigue siendo desde la
+pantalla táctil.
