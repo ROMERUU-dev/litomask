@@ -138,37 +138,7 @@ Dos avisos sobre este modelo:
 ### ¿Se puede controlar por cable?
 
 No con lo que trae la máquina. La Mono 4 Ultra tiene un puerto USB-A que solo funciona como
-lector de memorias, y Wi-Fi de 2.4 GHz que la conecta a la nube de Anycubic (app y Photon
+lector de memorias, y Wi-Fi de 2.4 GHz que la conecta a la nube de Anycubic (la app y Photon
 Workshop pasan por ahí). No expone puerto serie, ni USB en modo dispositivo, ni una API de red
-local: los proyectos que sí hablan en local con impresoras Anycubic (modo LAN con broker MQTT en
-el puerto 9883) cubren la familia Kobra de filamento; los Photon de resina van por otra
-plataforma sin API local documentada.
-
-Lo que sí se puede montar, de menor a mayor esfuerzo:
-
-1. **Nube de Anycubic.** Existen clientes no oficiales del API de Anycubic Cloud (por ejemplo
-   `anycubic-cloud-api` en Python) que leen el estado y pueden lanzar un archivo que la
-   impresora ya tiene. Necesita cuenta, internet y un token sacado de la app o del slicer, y
-   depende de que Anycubic no cambie el servicio.
-2. **Memoria USB emulada.** Una Raspberry Pi Zero 2 W (o Pi 4) en modo *USB gadget* de
-   almacenamiento masivo, enchufada al puerto USB de la impresora, se ve como una memoria
-   normal. La computadora copia el `.pm4u` a la Pi por red (o por su segundo USB) y la
-   impresora lo ve aparecer al instante; el disparo sigue siendo desde la pantalla táctil, o
-   desde la app si se combina con la opción 1. Es la solución "por cable" real con este modelo.
-3. **Reemplazar la electrónica.** Sacar el panel LCD y el LED y gobernarlos desde la PC
-   (placa HDMI→MIPI para el panel y un driver PWM propio para el LED). Da control total de
-   tiempo, intensidad y secuencia, pero deja de ser una impresora.
-
-Si el objetivo es solo no caminar con la memoria USB, la opción 2 es la que conviene.
-
-
-La opción 2 ya está resuelta en este repositorio: la carpeta [`pi/`](../pi/README.md) contiene
-el "puente USB" para Raspberry Pi (Zero 2 W, Zero W, Pi 4/5 por USB-C). Un único script de
-Python sin dependencias expone una imagen FAT32 como memoria USB con `g_mass_storage` y recibe
-los archivos por HTTP (`PUT /api/files/nombre.pm4u`); en cada envío retira la memoria, escribe el
-archivo, la desmonta y la vuelve a exponer para que la impresora la relea. La Pi sirve además
-una copia de LitoMask en `http://litomask.local:8080`, que es desde donde conviene usar la
-sección "Enviar a la impresora" (desde GitHub Pages, por HTTPS, el navegador bloquea la
-llamada a un `http://` de la red local). El instalador `pi/install.sh` configura `dwc2`, crea la
-imagen y deja el servicio en `systemd`; el disparo de la impresión sigue siendo desde la
-pantalla táctil.
+local. LitoMask genera el archivo; el traslado a la impresora se hace con la memoria USB y la
+impresión se lanza desde su pantalla táctil.

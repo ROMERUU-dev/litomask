@@ -19,7 +19,6 @@ const es = {
     sec3: "3 · Doble patronado (A / B)",
     sec4: "4 · Simulación y calibración",
     sec5: "5 · Exposición y exportar",
-    sec6: "6 · Enviar a la impresora",
 
     // Mask source
     loadImage: "Cargar PNG / SVG",
@@ -128,40 +127,6 @@ const es = {
     fitNeed: "Se necesitan al menos 3 celdas medidas.",
     close: "Cerrar",
     useValues: "Usar σ y D₀ en la simulación",
-
-    // Printer link (USB bridge)
-    bridgeHelp: "Envía los archivos a un puente USB: una Raspberry Pi enchufada a la impresora que se comporta como una memoria USB. Cómo montarlo: pi/README.md en el repositorio.",
-    bridgeUrl: "Dirección del puente",
-    bridgeUrlHint: "Nombre o IP de la Pi (con el puerto si no es el 8080). Se recuerda en este navegador.",
-    bridgeTest: "Probar conexión",
-    bridgeReconnect: "Reconectar memoria",
-    bridgeSend: "Enviar a la impresora",
-    bridgeDelete: "Borrar",
-    bridgeDeleteConfirm: (name: string) => `¿Borrar ${name} de la memoria USB?`,
-    bridgeMixedContent: (url: string) => `Esta página se abrió por HTTPS y el navegador bloquea las llamadas a un puente por HTTP en la red local (contenido mixto). Abre LitoMask desde la propia Pi: ${url}`,
-    bridgeModeGadget: "memoria USB",
-    bridgeModeDev: "modo de prueba (sin USB)",
-    bridgeExported: "visible para la impresora",
-    bridgeNotExported: "desconectada de la impresora",
-    bridgeStatusLine: (mode: string, label: string, exported: string, version: string) => `${mode} «${label}» · ${exported} · puente v${version}`,
-    bridgeSpace: (free: string, total: string) => `Libre ${free} de ${total}`,
-    bridgeFiles: "Archivos en la memoria:",
-    bridgeNoFiles: "La memoria está vacía.",
-    bridgeSentList: "Enviados:",
-    bridgeSentHint: "La impresión se lanza desde la pantalla de la impresora: elige el archivo en la memoria USB y pulsa imprimir.",
-    bridgeDone: (n: number) => `${n} archivo(s) enviado(s); la memoria USB se ha reconectado a la impresora.`,
-    bridgeReconnected: "Memoria USB reconectada; la impresora debería volver a leerla.",
-    busyBridgeTest: "Conectando con el puente...",
-    busyBridgeReconnect: "Reconectando la memoria USB...",
-    busyBridgeDelete: (name: string) => `Borrando ${name}...`,
-    busyBridgeUpload: (i: number, n: number, name: string, pct: number) => `Enviando ${i}/${n}: ${name} · ${pct} %`,
-    errBridgeUnreachable: (url: string) => `No se pudo conectar con el puente en ${url}. Comprueba que la Pi está encendida y en la misma red.`,
-    errBridgeNotBridge: (url: string) => `${url} responde, pero no es un puente USB de LitoMask.`,
-    errBridgeBusy: "El puente está ocupado con otra escritura; inténtalo de nuevo en unos segundos.",
-    errBridgeNoSpace: "No hay espacio suficiente en la memoria USB: borra archivos y vuelve a intentarlo.",
-    errBridgeNotFound: (name: string) => `${name} ya no está en la memoria USB.`,
-    errBridgeBadName: (name: string) => `Nombre de archivo no válido para la memoria USB: ${name}`,
-    errBridgeHttp: (status: number, detail: string) => `El puente respondió con el error ${status}${detail ? ` (${detail})` : ""}`,
 };
 
 export type Strings = typeof es;
